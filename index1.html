@@ -1,0 +1,1199 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Movie Diary</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="" />
+    <link href="https://fonts.googleapis.com/css2?family=Pacifico&display=swap" rel="stylesheet" />
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet" />
+    <link href="https://ai-public.creatie.ai/gen_page/tailwind-custom-v2.css" rel="stylesheet" />
+    <script
+        src="https://cdn.tailwindcss.com/3.4.5?plugins=forms@0.5.7,typography@0.5.13,aspect-ratio@0.4.2,container-queries@0.1.1"></script>
+    <script src="https://ai-public.creatie.ai/gen_page/tailwind-config.min.js" data-color="#000000"
+        data-border-radius="small"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js"></script>
+    
+    <style>
+        /* Page Transition Styles */
+        .page-enter-active,
+        .page-leave-active {
+            transition: opacity 0.5s;
+        }
+
+        .page-enter,
+        .page-leave-to {
+            opacity: 0 1;
+            /* Start/end with opacity 0 */
+        }
+
+        /* Consistent Button Styles */
+        .rounded-button {
+            padding: 0.375rem 1rem;
+            border-radius: 9999px;
+        }
+
+        .star-rating {
+            display: inline-block;
+        }
+
+        .star-rating i {
+            font-size: 1.2rem;
+            color: #ff6f61;
+            cursor: pointer;
+            transition: color 0.2s;
+        }
+
+        .star-rating i:hover {
+            color: #ff5647;
+        }
+
+        /* For visually hiding the radio buttons */
+        .star-rating input[type="radio"] {
+            position: absolute;
+            opacity: 0;
+            pointer-events: none;
+        }
+    </style>
+</head>
+
+<body class="bg-gray-50" data-theme="light">
+    <div class="max-w-[412px] mx-auto min-h-screen relative">
+        <header class="fixed top-0 w-full max-w-[412px] bg-white z-50 shadow-sm dark:bg-gray-800">
+            <div class="flex items-center justify-between px-4 h-14">
+                <img src="images/TMLogo.svg" class="cc cc-logo" alt="Movie Diary Logo" height="40" width="40" />
+                <div class="text-lg font-medium text-gray-800 dark:text-gray-200" role="heading" aria-level="1">
+                </div>
+                <div class="flex">
+                    <div class="relative">
+                        <button class="w-8 h-8 flex items-center justify-center" aria-label="Notifications" id="notification-button">
+                            <i class="fas fa-bell text-gray-600 dark:text-gray-400"></i>
+                            <span id="notification-badge" class="hidden absolute top-0 right-0 bg-red-500 text-white text-xs rounded-full px-1"></span>
+                        </button>
+                        <div id="notification-dropdown" class="hidden absolute right-0 mt-2 w-64 bg-white rounded-lg shadow-lg dark:bg-gray-800 z-50">
+                            <div id="notification-list" class="max-h-64 overflow-y-auto"></div>
+                        </div>
+                    </div>
+                    <button aria-label="Toggle theme" class="w-8 h-8 flex items-center justify-center ml-2"
+                        id="theme-toggle-button"><i class="fas fa-moon text-gray-600 dark:text-gray-400"></i></button>
+                </div>
+            </div>
+        </header>
+
+        <div class="sticky top-14 bg-white shadow-sm z-40 overflow-x-auto dark:bg-gray-800" role="tablist"
+            aria-label="Main Navigation">
+            <div class="flex space-x-4 px-4 py-2 whitespace-nowrap">
+                <button role="tab" aria-selected="true" aria-controls="home-panel" id="home-tab"
+                    class="tab-button active-tab text-[#ff6f61] font-medium px-3 py-1 rounded-full bg-[#ff6f61]/10 dark:text-[#ff6f61] dark:bg-[#ff6f61]/20"
+                    aria-label="Home tab">Home</button>
+                <button role="tab" aria-selected="false" aria-controls="recent-panel" id="recent-tab"
+                    class="tab-button text-gray-600 font-medium px-3 py-1 rounded-full hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-700"
+                    aria-label="Recent Movies tab">Recent Movies</button>
+                <button role="tab" aria-selected="false" aria-controls="watchlist-panel" id="watchlist-tab"
+                    class="tab-button text-gray-600 font-medium px-3 py-1 rounded-full hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-700"
+                    aria-label="Watchlist tab">Watchlist</button>
+                <button role="tab" aria-selected="false" aria-controls="watched-panel" id="watched-tab"
+                    class="tab-button text-gray-600 font-medium px-3 py-1 rounded-full hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-700"
+                    aria-label="Watched tab">Watched</button>
+            </div>
+        </div>
+
+        <main class="pt-28 pb-16">
+            <!-- Home Panel -->
+            <div class="px-4 py-4 page-enter-active page-enter" id="home-panel" role="tabpanel"
+                aria-labelledby="home-tab">
+                <div class="flex items-center space-x-4 mb-6">
+                    <div class="flex-1 text-center">
+                        <div class="w-16 h-16 mx-auto rounded-full overflow-hidden mb-2">
+                            <img src="Images/Dagi.jpg" class="w-full h-full object-cover" alt="Profile picture of Dagi"
+                                loading="lazy" />
+                        </div>
+                        <div class="text-sm font-medium text-gray-800 dark:text-gray-200">Dagi</div>
+                    </div>
+                    <div class="text-[#ff6f61] text-2xl"><i class="fas fa-heart"></i></div>
+                    <div class="flex-1 text-center">
+                        <div class="w-16 h-16 mx-auto rounded-full overflow-hidden mb-2">
+                            <img src="Images/Ema.jpg" class="w-full h-full object-cover" alt="Profile picture of Ema"
+                                loading="lazy" />
+                        </div>
+                        <div class="text-sm font-medium text-gray-800 dark:text-gray-200">Ema</div>
+                    </div>
+                </div>
+                <div class="grid grid-cols-2 gap-4 mb-6">
+                    <div class="bg-white rounded-lg p-4 shadow-sm dark:bg-gray-800">
+                        <div class="text-2xl font-bold text-[#ff6f61] mb-1" id="movies-together-count">
+                            <!-- Movies together count will be updated here -->
+                        </div>
+                        <div class="text-sm text-gray-600 dark:text-gray-400">Movies Together</div>
+                    </div>
+                    <div class="bg-white rounded-lg p-4 shadow-sm dark:bg-gray-800">
+                        <div class="text-2xl font-bold text-[#ff6f61] mb-1" id="average-rating">
+                            <!-- Average rating will be displayed here -->
+                        </div>
+                        <div class="text-sm text-gray-600 dark:text-gray-400">Avg Rating</div>
+                    </div>
+                </div>
+                <div class="mb-6">
+                    <h2 class="text-lg font-medium mb-4 text-gray-800 dark:text-gray-200" id="watchlist-movies-heading">
+                        Watchlist</h2>
+                    <div class="flex justify-between items-center mb-3">
+                        <select
+                            class="text-sm text-gray-600 dark:text-gray-400 bg-transparent border-gray-300 dark:border-gray-600 rounded-md"
+                            onchange="sortWatchlist(this.value)" aria-label="Sort watchlist by">
+                            <option value="date">Sort by Date</option>
+                            <option value="priority">Sort by Priority</option>
+                        </select>
+                    </div>
+                    <div class="space-y-4" id="watchlist-list" role="tabpanel" aria-labelledby="watchlist-tab">
+                    </div>
+                </div>
+                <!-- Recommendations Section -->
+                <div class="mb-6">
+                    <h2 class="text-lg font-medium mb-4 text-gray-800 dark:text-gray-200">Recommendations</h2>
+                    <div id="recommendations-list" class="space-y-4"></div>
+                </div>
+            </div>
+
+            <!-- Recent Movies Panel -->
+            <div class="px-4 py-4 hidden page-enter-active page-enter" id="recent-panel" role="tabpanel"
+                aria-labelledby="recent-tab">
+                <h2 class="text-lg font-medium mb-4 text-gray-800 dark:text-gray-200" id="recent-movies-heading">Recent
+                    Movies</h2>
+                <div class="grid grid-cols-2 gap-4" id="recent-movies-list">
+                    <!-- Recent movies will be added here -->
+                </div>
+            </div>
+
+            <!-- Watchlist Panel -->
+            <div class="px-4 py-4 hidden page-enter-active page-enter" id="watchlist-panel" role="tabpanel"
+                aria-labelledby="watchlist-tab">
+                <div class="flex justify-end mb-4">
+                    <button id="export-watchlist-csv"
+                        class="bg-green-500 hover:bg-green-600 text-white font-medium py-1 px-3 rounded-full text-xs mr-2">
+                        Export Watchlist as CSV
+                    </button>
+                    <button id="export-watchlist-pdf"
+                        class="bg-green-500 hover:bg-green-600 text-white font-medium py-1 px-3 rounded-full text-xs">
+                        Export Watchlist as PDF
+                    </button>
+                </div>
+                <h2 class="text-lg font-medium mb-4 text-gray-800 dark:text-gray-200" id="watchlist-movies-heading-tab">
+                    Watchlist</h2>
+                <div class="space-y-4" id="watchlist-list-tab" role="tabpanel" aria-labelledby="watchlist-tab">
+                    <!-- Watchlist items will be added here -->
+                </div>
+            </div>
+
+            <!-- Watched Panel -->
+            <div class="px-4 py-4 hidden page-enter-active page-enter" id="watched-panel" role="tabpanel"
+                aria-labelledby="watched-tab">
+                <div class="flex justify-end mb-4">
+                    <button id="export-watched-csv"
+                        class="bg-green-500 hover:bg-green-600 text-white font-medium py-1 px-3 rounded-full text-xs mr-2">
+                        Export Watched as CSV
+                    </button>
+                    <button id="export-watched-pdf"
+                        class="bg-green-500 hover:bg-green-600 text-white font-medium py-1 px-3 rounded-full text-xs">
+                        Export Watched as PDF
+                    </button>
+                    <button id="clear-watched-button"
+                        class="bg-red-500 hover:bg-red-600 text-white font-medium py-1 px-3 rounded-full text-xs ml-2">
+                        Clear Watched
+                    </button>
+                </div>
+                <h2 class="text-lg font-medium mb-4 text-gray-800 dark:text-gray-200" id="watched-movies-heading">
+                    Watched Movies</h2>
+
+                <div class="space-y-4" id="watched-list" role="tabpanel" aria-labelledby="watched-tab">
+                    <!-- Watched movies will be added here -->
+                </div>
+            </div>
+        </main>
+
+        <!-- Navigation Bar -->
+        <nav
+            class="fixed bottom-0 w-full max-w-[412px] bg-white border-t border-gray-200 dark:bg-gray-800 dark:border-gray-700">
+            <div class="grid grid-cols-4 h-16  [&>button]:transition-colors">
+                <button
+                    class="nav-button flex flex-col items-center justify-center text-[#ff6f61] bg-[#ff6f61]/10 dark:bg-[#ff6f61]/20"
+                    id="home-nav">
+                    <i class="fas fa-home text-[#ff6f61]"></i>
+                    <span class="text-xs mt-1">Home</span>
+                </button>
+                <button
+                    class="nav-button flex flex-col items-center justify-center hover:text-[#ff6f61] hover:bg-[#ff6f61]/10 dark:hover:bg-[#ff6f61]/20"
+                    id="recent-nav">
+                    <i class="fas fa-film text-gray-400 dark:text-gray-500"></i>
+                    <span class="text-xs mt-1">Recent</span>
+                </button>
+                <button
+                    class="nav-button flex flex-col items-center justify-center hover:text-[#ff6f61] hover:bg-[#ff6f61]/10 dark:hover:bg-[#ff6f61]/20"
+                    id="add-movie-nav">
+                    <i class="fas fa-plus-circle text-gray-400 dark:text-gray-500"></i>
+                    <span class="text-xs mt-1">Add</span>
+                </button>
+                <button
+                    class="nav-button flex flex-col items-center justify-center hover:text-[#ff6f61] hover:bg-[#ff6f61]/10 dark:hover:bg-[#ff6f61]/20"
+                    id="watched-nav">
+                    <i class="fas fa-check-circle text-gray-400 dark:text-gray-500"></i>
+                    <span class="text-xs mt-1">Watched</span>
+                </button>
+            </div>
+        </nav>
+
+        <!-- Add Movie Button -->
+        <button
+            class="fixed right-4 bottom-20 w-12 h-12 bg-[#ff6f61] text-white rounded-full shadow-lg flex items-center justify-center transform transition-transform hover:scale-110 active:scale-95"
+            aria-label="Add new movie" id="add-new-movie-button">
+            <i class="fas fa-plus"></i>
+        </button>
+
+        <!-- Add Movie Modal -->
+        <div id="add-movie-modal"
+            class="hidden fixed inset-0 bg-gray-500 bg-opacity-75 flex items-center justify-center z-50">
+            <div class="bg-white p-4 rounded-lg w-full max-w-md dark:bg-gray-800 max-h-[90vh] overflow-y-auto">
+                <h3 class="text-lg font-medium mb-4 text-gray-800 dark:text-gray-200">Add a Movie</h3>
+                <div class="mb-4">
+                    <input type="text" id="movie-search-input"
+                        class="w-full px-3 py-2 border rounded-md dark:bg-gray-700 dark:border-gray-600 dark:text-gray-200"
+                        placeholder="Search for a movie..." aria-label="Search for a movie">
+                </div>
+                <div class="mb-4">
+                    <label for="movie-genre" class="block text-sm font-medium text-gray-800 dark:text-gray-200">Genre:</label>
+                    <input type="text" id="movie-genre"
+                        class="w-full px-3 py-2 border rounded-md dark:bg-gray-700 dark:border-gray-600 dark:text-gray-200"
+                        placeholder="Filter by genre (e.g., Action, Comedy)">
+                </div>
+                <div class="mb-4">
+                    <label for="movie-year" class="block text-sm font-medium text-gray-800 dark:text-gray-200">Year:</label>
+                    <input type="text" id="movie-year"
+                        class="w-full px-3 py-2 border rounded-md dark:bg-gray-700 dark:border-gray-600 dark:text-gray-200"
+                        placeholder="Filter by year (e.g., 2020)">
+                </div>
+                <div class="mb-4">
+                    <label for="movie-rating" class="block text-sm font-medium text-gray-800 dark:text-gray-200">Rating:</label>
+                    <input type="text" id="movie-rating"
+                        class="w-full px-3 py-2 border rounded-md dark:bg-gray-700 dark:border-gray-600 dark:text-gray-200"
+                        placeholder="Filter by rating (e.g., 7.5)">
+                </div>
+                <button id="search-button" class="rounded-button bg-[#ff6f61] text-white px-4 py-2 w-full"
+                    aria-label="Search">Search</button>
+                <div class="mb-4" id="search-results" aria-live="polite">
+                    <h4 class="font-medium mb-2 text-gray-800 dark:text-gray-200">Search Results</h4>
+                    <ul id="search-results-list"
+                        class="border rounded-md divide-y max-h-40 overflow-y-auto dark:divide-gray-700">
+                        <!-- Search results will be displayed here -->
+                    </ul>
+                </div>
+                <div id="pagination-controls" class="flex justify-center mt-4"></div>
+                <div id="movie-details" class="hidden">
+                    <h4 class="font-medium mb-2 text-gray-800 dark:text-gray-200">Movie Details</h4>
+                    <img id="movie-poster" src="" alt="Movie Poster"
+                        class="w-32 h-48 object-cover rounded-md mb-2 hidden">
+                    <div id="movie-title" class="font-medium mb-1 text-gray-800 dark:text-gray-200"></div>
+                    <div id="movie-plot" class="text-sm mb-2 text-gray-800 dark:text-gray-200"></div>
+                    <div class="mb-4">
+                        <label for="movie-priority" class="block text-sm font-medium text-gray-800 dark:text-gray-200">Priority:</label>
+                        <select id="movie-priority"
+                            class="w-full px-3 py-2 border rounded-md dark:bg-gray-700 dark:border-gray-600 dark:text-gray-200">
+                            <option value="low">Low</option>
+                            <option value="medium">Medium</option>
+                            <option value="high">High</option>
+                        </select>
+                    </div>
+                    <button id="add-to-watchlist-button"
+                        class="rounded-button bg-[#ff6f61] text-white px-4 py-2 w-full">Add to Watchlist</button>
+                </div>
+                <button id="close-modal-button"
+                    class="mt-4 rounded-button bg-gray-300 text-gray-800 dark:bg-gray-600 dark:text-gray-200 px-4 py-2 w-full">Close</button>
+            </div>
+        </div>
+
+        <!-- Rate Movie Modal -->
+        <div id="rate-movie-modal"
+            class="hidden fixed inset-0 bg-gray-500 bg-opacity-75 flex items-center justify-center z-50">
+            <div class="bg-white p-4 rounded-lg w-full max-w-md dark:bg-gray-800">
+                <h3 class="text-lg font-medium mb-4 text-gray-800 dark:text-gray-200">Rate Movie</h3>
+                <div id="rate-movie-title" class="font-medium mb-2 text-gray-800 dark:text-gray-200"></div>
+                <div class="flex items-center mb-4 star-rating-container">
+                    <!-- Stars will be dynamically added here -->
+                </div>
+                <button id="confirm-rate-button" class="rounded-button bg-[#ff6f61] text-white">Confirm Rating</button>
+                <button id="close-rate-modal-button"
+                    class="mt-2 rounded-button bg-gray-300 text-gray-800 dark:bg-gray-600 dark:text-gray-200">Close</button>
+            </div>
+        </div>
+
+        <script>
+            // OMDb API Key
+            const omdbApiKey = 'b25e8327';
+
+            // Get modal elements
+            const addMovieModal = document.getElementById('add-movie-modal');
+            const movieSearchInput = document.getElementById('movie-search-input');
+            const searchButton = document.getElementById('search-button');
+            const searchResultsList = document.getElementById('search-results-list');
+            const movieDetails = document.getElementById('movie-details');
+            const moviePoster = document.getElementById('movie-poster');
+            const movieTitle = document.getElementById('movie-title');
+            const moviePlot = document.getElementById('movie-plot');
+            const moviePrioritySelect = document.getElementById('movie-priority');
+            const addToWatchlistButton = document.getElementById('add-to-watchlist-button');
+            const closeModalButton = document.getElementById('close-modal-button');
+
+            // Get rate modal elements
+            const rateMovieModal = document.getElementById('rate-movie-modal');
+            const rateMovieTitle = document.getElementById('rate-movie-title');
+            const confirmRateButton = document.getElementById('confirm-rate-button');
+            const closeRateModalButton = document.getElementById('close-rate-modal-button');
+
+            // Navigation elements
+            const homeNav = document.getElementById('home-nav');
+            const recentNav = document.getElementById('recent-nav');
+            const addMovieNav = document.getElementById('add-movie-nav'); // For the plus button
+            const watchedNav = document.getElementById('watched-nav');
+
+            // Tab elements
+            const homeTab = document.getElementById('home-tab');
+            const recentTab = document.getElementById('recent-tab');
+            const watchlistTab = document.getElementById('watchlist-tab');
+            const watchedTab = document.getElementById('watched-tab');
+
+            const homePanel = document.getElementById('home-panel');
+            const recentPanel = document.getElementById('recent-panel');
+            const watchlistPanel = document.getElementById('watchlist-panel');
+            const watchedPanel = document.getElementById('watched-panel');
+            const recentMoviesList = document.getElementById('recent-movies-list');
+
+            const moviesTogetherCount = document.getElementById('movies-together-count');
+            const averageRating = document.getElementById('average-rating');
+
+            let selectedMovie = null;
+            let movieToRate = null;
+
+            // Pagination variables
+            let currentPage = 1;
+            let totalResults = 0;
+            let currentQuery = '';
+
+            // Initialize notifications in localStorage
+            if (!localStorage.getItem('notifications')) {
+                localStorage.setItem('notifications', JSON.stringify([]));
+            }
+
+            // Function to add a notification
+            function addNotification(message) {
+                const notifications = JSON.parse(localStorage.getItem('notifications'));
+                notifications.push({ message, read: false, timestamp: new Date().toISOString() });
+                localStorage.setItem('notifications', JSON.stringify(notifications));
+                updateNotificationBadge();
+            }
+
+            // Function to update the notification badge
+            function updateNotificationBadge() {
+                const notifications = JSON.parse(localStorage.getItem('notifications'));
+                const unreadCount = notifications.filter(notification => !notification.read).length;
+                const badge = document.getElementById('notification-badge');
+                if (unreadCount > 0) {
+                    badge.textContent = unreadCount;
+                    badge.classList.remove('hidden');
+                } else {
+                    badge.classList.add('hidden');
+                }
+            }
+
+            // Function to display notifications in a dropdown
+            function displayNotifications() {
+                const notifications = JSON.parse(localStorage.getItem('notifications'));
+                const notificationList = document.getElementById('notification-list');
+                notificationList.innerHTML = '';
+
+                if (notifications.length === 0) {
+                    notificationList.innerHTML = '<p class="text-gray-800 dark:text-gray-200 p-2">No notifications.</p>';
+                } else {
+                    notifications.forEach((notification, index) => {
+                        const notificationItem = document.createElement('div');
+                        notificationItem.classList.add('p-2', 'border-b', 'border-gray-200', 'dark:border-gray-700');
+                        notificationItem.innerHTML = `
+                            <p class="text-sm ${notification.read ? 'text-gray-500' : 'text-gray-800 dark:text-gray-200'}">${notification.message}</p>
+                            <p class="text-xs text-gray-400">${new Date(notification.timestamp).toLocaleString()}</p>
+                        `;
+                        notificationItem.addEventListener('click', () => {
+                            markNotificationAsRead(index);
+                        });
+                        notificationList.appendChild(notificationItem);
+                    });
+                }
+            }
+
+            // Function to mark a notification as read
+            function markNotificationAsRead(index) {
+                const notifications = JSON.parse(localStorage.getItem('notifications'));
+                notifications[index].read = true;
+                localStorage.setItem('notifications', JSON.stringify(notifications));
+                displayNotifications();
+                updateNotificationBadge();
+            }
+
+            // Update the notification button to show the dropdown
+            const notificationButton = document.getElementById('notification-button');
+            const notificationDropdown = document.getElementById('notification-dropdown');
+
+            notificationButton.addEventListener('click', () => {
+                notificationDropdown.classList.toggle('hidden');
+                displayNotifications();
+            });
+
+            // Add notifications when relevant events occur
+            function notifyMovieAdded(movieTitle) {
+                addNotification(`Added "${movieTitle}" to your watchlist.`);
+            }
+
+            function notifyMovieWatched(movieTitle) {
+                addNotification(`Marked "${movieTitle}" as watched.`);
+            }
+
+            // Function to search for movies using OMDb API
+            async function searchMovie(query, page = 1, genre = '', year = '', rating = '') {
+                let url = `https://www.omdbapi.com/?apikey=${omdbApiKey}&s=${encodeURIComponent(query)}&page=${page}`;
+
+                // Add filters to the URL
+                if (genre) url += `&type=${genre}`; // OMDb API uses "type" for genre
+                if (year) url += `&y=${year}`;
+                if (rating) url += `&rating=${rating}`;
+
+                try {
+                    const response = await fetch(url);
+                    const data = await response.json();
+
+                    if (data.Response === 'True') {
+                        totalResults = parseInt(data.totalResults);
+                        return data.Search; // Array of movie objects
+                    } else {
+                        console.error('OMDb Search Error:', data.Error);
+                        return []; // No results or error
+                    }
+                } catch (error) {
+                    console.error('Network or Fetch Error:', error);
+                    return [];
+                }
+            }
+
+            // Function to fetch movie details by IMDb ID using OMDb API
+            async function getMovieDetails(imdbID) {
+                const url = `https://www.omdbapi.com/?apikey=${omdbApiKey}&i=${imdbID}&plot=full`; // Get full plot
+
+                try {
+                    const response = await fetch(url);
+                    const data = await response.json();
+
+                    if (data.Response === 'True') {
+                        return data; // Movie details object
+                    } else {
+                        console.error('OMDb Details Error:', data.Error);
+                        return null;
+                    }
+                } catch (error) {
+                    console.error('Network or Fetch Error:', error);
+                    return null;
+                }
+            }
+
+            // Function to display movie details
+            function displayMovieDetails(details) {
+                if (details) {
+                    moviePoster.src = details.Poster !== 'N/A' ? details.Poster : 'placeholder-image-url';
+                    moviePoster.alt = `Poster for ${details.Title}`;
+                    moviePoster.classList.remove('hidden'); // Show the image if it was previously hidden
+                    movieTitle.textContent = details.Title;
+                    moviePlot.textContent = details.Plot;
+                    movieDetails.classList.remove('hidden');
+                    selectedMovie = details; // Store the selected movie details
+                } else {
+                    movieDetails.classList.add('hidden');
+                    selectedMovie = null;
+                }
+            }
+
+            // Event listener for the search button
+            searchButton.addEventListener('click', async () => {
+                const query = movieSearchInput.value.trim();
+                const genre = document.getElementById('movie-genre').value.trim();
+                const year = document.getElementById('movie-year').value.trim();
+                const rating = document.getElementById('movie-rating').value.trim();
+
+                if (query) {
+                    currentQuery = query;
+                    currentPage = 1;
+                    const searchResults = await searchMovie(query, currentPage, genre, year, rating);
+                    displaySearchResults(searchResults);
+                    updatePaginationControls();
+                }
+            });
+
+            // Function to display search results in the modal
+            function displaySearchResults(results) {
+                searchResultsList.innerHTML = ''; // Clear previous results
+
+                if (results.length === 0) {
+                    const listItem = document.createElement('li');
+                    listItem.textContent = 'No results found.';
+                    listItem.classList.add('text-gray-800', 'dark:text-gray-200');
+                    searchResultsList.appendChild(listItem);
+                } else {
+                    results.forEach(movie => {
+                        const listItem = document.createElement('li');
+                        listItem.classList.add('cursor-pointer', 'hover:bg-gray-100', 'p-2', 'text-gray-800', 'dark:text-gray-200', 'dark:hover:bg-gray-700');
+                        listItem.textContent = movie.Title;
+                        listItem.addEventListener('click', async () => {
+                            const details = await getMovieDetails(movie.imdbID);
+                            displayMovieDetails(details);
+                        });
+                        searchResultsList.appendChild(listItem);
+                    });
+                }
+            }
+
+            // Function to update pagination controls
+            function updatePaginationControls() {
+                const paginationContainer = document.getElementById('pagination-controls');
+                paginationContainer.innerHTML = '';
+
+                if (totalResults > 10) { // Only show pagination if there are more than 10 results
+                    const prevButton = document.createElement('button');
+                    prevButton.textContent = 'Previous';
+                    prevButton.classList.add('rounded-button', 'bg-[#ff6f61]', 'text-white', 'px-4', 'py-2', 'mr-2');
+                    prevButton.disabled = currentPage === 1;
+                    prevButton.addEventListener('click', async () => {
+                        currentPage--;
+                        const searchResults = await searchMovie(currentQuery, currentPage);
+                        displaySearchResults(searchResults);
+                        updatePaginationControls();
+                    });
+
+                    const nextButton = document.createElement('button');
+                    nextButton.textContent = 'Next';
+                    nextButton.classList.add('rounded-button', 'bg-[#ff6f61]', 'text-white', 'px-4', 'py-2');
+                    nextButton.disabled = currentPage * 10 >= totalResults;
+                    nextButton.addEventListener('click', async () => {
+                        currentPage++;
+                        const searchResults = await searchMovie(currentQuery, currentPage);
+                        displaySearchResults(searchResults);
+                        updatePaginationControls();
+                    });
+
+                    paginationContainer.appendChild(prevButton);
+                    paginationContainer.appendChild(nextButton);
+                }
+            }
+
+            // Add New Movie Button (Triggers modal)
+            const addNewMovieButton = document.getElementById('add-new-movie-button');
+            addNewMovieButton.addEventListener('click', () => {
+                addMovieModal.classList.remove('hidden');
+                movieSearchInput.value = ''; // Clear search input
+                searchResultsList.innerHTML = ''; // Clear search results
+                movieDetails.classList.add('hidden'); // Hide movie details
+                selectedMovie = null;
+            });
+
+            // Close Modal Button
+            closeModalButton.addEventListener('click', () => {
+                addMovieModal.classList.add('hidden');
+            });
+
+            // Add to Watchlist Button
+            addToWatchlistButton.addEventListener('click', () => {
+                if (selectedMovie) {
+                    const priority = moviePrioritySelect.value;
+                    addMovieToWatchlist(selectedMovie, priority);
+                    addMovieModal.classList.add('hidden');
+                    notifyMovieAdded(selectedMovie.Title); // Notify user
+                }
+            });
+
+            // Function to add a movie to the watchlist (using local storage)
+            function addMovieToWatchlist(movie, priority) {
+                let watchlist = JSON.parse(localStorage.getItem('watchlist')) || [];
+                if (!watchlist.some(m => m.imdbID === movie.imdbID)) {
+                    movie.priority = priority;
+                    movie.addedDate = new Date().toISOString(); // Add a timestamp
+                    watchlist.push(movie);
+                    localStorage.setItem('watchlist', JSON.stringify(watchlist));
+                    updateWatchlistUI(); // Update the watchlist on the page
+                }
+            }
+
+            // Function to remove a movie from the watchlist
+            function removeMovieFromWatchlist(imdbID) {
+                let watchlist = JSON.parse(localStorage.getItem('watchlist')) || [];
+                watchlist = watchlist.filter(movie => movie.imdbID !== imdbID);
+                localStorage.setItem('watchlist', JSON.stringify(watchlist));
+                updateWatchlistUI();
+            }
+
+            // Function to update the watchlist UI
+            function updateWatchlistUI() {
+                const watchlist = JSON.parse(localStorage.getItem('watchlist')) || [];
+                const watchlistContainer = document.getElementById('watchlist-list');
+                const watchlistContainerTab = document.getElementById('watchlist-list-tab');
+
+                [watchlistContainer, watchlistContainerTab].forEach(container => {
+                    container.innerHTML = '';
+
+                    if (watchlist.length === 0) {
+                        const messageElement = document.createElement('p');
+                        messageElement.textContent = "Your watchlist is empty.";
+                        messageElement.classList.add('text-gray-800', 'dark:text-gray-200');
+                        container.appendChild(messageElement);
+                    } else {
+                        watchlist.forEach(movie => {
+                            const article = document.createElement('article');
+                            article.classList.add('bg-white', 'rounded-lg', 'p-4', 'flex', 'items-center', 'shadow-sm', 'dark:bg-gray-800');
+                            article.innerHTML = `
+                        <img src="${movie.Poster}" class="w-16 h-24 object-cover rounded-md mr-4" alt="Movie poster for ${movie.Title}" loading="lazy"/>
+                        <div class="flex-1">
+                            <div class="font-medium mb-1 text-gray-800 dark:text-gray-200">${movie.Title}</div>
+                            <div class="text-sm text-gray-500 dark:text-gray-400 mb-2">Added on: ${new Date(movie.addedDate).toLocaleDateString()}</div>
+                            <div class="text-sm text-gray-500 dark:text-gray-400 mb-2">Priority: ${movie.priority}</div>
+                            <button class="!rounded-button bg-[#ff6f61] text-white text-sm px-4 py-1.5 transition-transform hover:scale-105 active:scale-95" aria-label="Watch ${movie.Title} together">Watch</button>
+                            <button class="remove-movie !rounded-button bg-gray-400 text-white text-sm px-4 py-1.5 transition-transform hover:scale-105 active:scale-95 dark:bg-gray-600" aria-label="Remove ${movie.Title}" data-imdbid="${movie.imdbID}">Remove</button>
+                        </div>
+                    `;
+
+                            // Add event listener to "Watch" button
+                            const watchButton = article.querySelector('[aria-label^="Watch"]');
+                            watchButton.addEventListener('click', () => {
+                                movieToRate = movie; // Store the movie to be rated
+                                rateMovieTitle.textContent = movie.Title;
+                                rateMovieModal.classList.remove('hidden');
+                                createInteractiveStars(movieToRate.rating || 0);
+                            });
+
+                            // Add event listener to "Remove" button
+                            const removeButton = article.querySelector('.remove-movie');
+                            removeButton.addEventListener('click', () => {
+                                removeMovieFromWatchlist(movie.imdbID);
+                            });
+
+                            container.appendChild(article);
+                        });
+                    }
+                });
+            }
+
+            // Function to create interactive stars with half-star support
+            function createInteractiveStars(currentRating) {
+                const starContainer = document.querySelector('.star-rating-container');
+                starContainer.innerHTML = ''; // Clear previous stars
+
+                for (let i = 1; i <= 5; i++) {
+                    const star = document.createElement('i');
+                    star.classList.add('fas', 'fa-star', 'cursor-pointer', 'relative');
+
+                    // Add a half-star overlay
+                    const halfStar = document.createElement('i');
+                    halfStar.classList.add('fas', 'fa-star-half-alt', 'cursor-pointer', 'absolute', 'opacity-0');
+
+                    // Container for each star
+                    const starWrapper = document.createElement('div');
+                    starWrapper.classList.add('relative', 'inline-block', 'w-6', 'h-6');
+                    starWrapper.appendChild(star);
+                    starWrapper.appendChild(halfStar);
+
+                    // Highlight current rating
+                    if (i <= currentRating) {
+                        star.classList.add('text-[#ff6f61]');
+                    } else {
+                        star.classList.add('text-gray-300', 'dark:text-gray-600');
+                    }
+
+                    // Handle click events for full and half stars
+                    starWrapper.addEventListener('click', (e) => {
+                        const rect = starWrapper.getBoundingClientRect();
+                        const clickX = e.clientX - rect.left; // Mouse position within the star
+                        const isHalfStar = clickX < rect.width / 2; // Check if clicked on the left half
+
+                        if (isHalfStar) {
+                            movieToRate.rating = i - 0.5; // Set half-star rating
+                        } else {
+                            movieToRate.rating = i; // Set full-star rating
+                        }
+
+                        createInteractiveStars(movieToRate.rating); // Update the UI
+                    });
+
+                    // Handle hover events for full and half stars
+                    starWrapper.addEventListener('mousemove', (e) => {
+                        const rect = starWrapper.getBoundingClientRect();
+                        const hoverX = e.clientX - rect.left; // Mouse position within the star
+                        const isHalfStar = hoverX < rect.width / 2; // Check if hovering over the left half
+
+                        // Highlight the star and half-star based on hover position
+                        if (isHalfStar) {
+                            star.classList.remove('text-[#ff6f61]');
+                            halfStar.classList.add('text-[#ff6f61]');
+                            halfStar.classList.remove('opacity-0');
+                        } else {
+                            star.classList.add('text-[#ff6f61]');
+                            halfStar.classList.remove('text-[#ff6f61]');
+                            halfStar.classList.add('opacity-0');
+                        }
+                    });
+
+                    // Reset hover effects when the mouse leaves the star
+                    starWrapper.addEventListener('mouseleave', () => {
+                        star.classList.remove('text-[#ff6f61]');
+                        halfStar.classList.remove('text-[#ff6f61]');
+                        halfStar.classList.add('opacity-0');
+
+                        // Reapply the current rating highlights
+                        if (i <= movieToRate.rating) {
+                            star.classList.add('text-[#ff6f61]');
+                        } else {
+                            star.classList.add('text-gray-300', 'dark:text-gray-600');
+                        }
+                    });
+
+                    starContainer.appendChild(starWrapper);
+                }
+            }
+
+            // Function to add a movie to the watched list
+            function addMovieToWatched(movie, rating) {
+                let watched = JSON.parse(localStorage.getItem('watched')) || [];
+                const existingMovieIndex = watched.findIndex(m => m.imdbID === movie.imdbID);
+
+                if (existingMovieIndex !== -1) {
+                    // Update existing movie
+                    watched[existingMovieIndex].rating = rating;
+                    watched[existingMovieIndex].watchedDate = new Date().toISOString();
+                } else {
+                    // Add new movie
+                    movie.rating = rating;
+                    movie.watchedDate = new Date().toISOString();
+                    watched.push(movie);
+                }
+
+                localStorage.setItem('watched', JSON.stringify(watched));
+                updateWatchedUI();
+                updateRecentMoviesUI();
+                notifyMovieWatched(movie.Title); // Notify user
+            }
+
+            // Function to update the watched movies UI
+            function updateWatchedUI() {
+                const watched = JSON.parse(localStorage.getItem('watched')) || [];
+                const watchedContainer = document.getElementById('watched-list');
+                watchedContainer.innerHTML = '';
+
+                if (watched.length === 0) {
+                    const messageElement = document.createElement('p');
+                    messageElement.textContent = "You haven't watched any movies yet.";
+                    messageElement.classList.add('text-gray-800', 'dark:text-gray-200');
+                    watchedContainer.appendChild(messageElement);
+                } else {
+                    watched.forEach(movie => {
+                        const article = document.createElement('article');
+                        article.classList.add('bg-white', 'rounded-lg', 'p-4', 'flex', 'items-center', 'shadow-sm', 'dark:bg-gray-800', 'relative');
+                        article.innerHTML = `
+                    <img src="${movie.Poster}" class="w-16 h-24 object-cover rounded-md mr-4" alt="Movie poster for ${movie.Title}" loading="lazy"/>
+                    <div class="flex-1">
+                        <div class="font-medium mb-1 text-gray-800 dark:text-gray-200">${movie.Title}</div>
+                        <div class="star-rating mb-2">
+                            ${generateStarRating(movie.rating)}
+                        </div>
+                        <div class="text-sm text-gray-500 dark:text-gray-400">Watched on: ${new Date(movie.watchedDate).toLocaleDateString()}</div>
+                    </div>
+                    <button class="remove-watched-movie absolute top-2 right-2 bg-red-500 hover:bg-red-600 text-white font-bold py-1 px-1.5 rounded-full text-xs" 
+                        aria-label="Remove ${movie.Title} from watched" data-imdbid="${movie.imdbID}">
+                        <i class="fas fa-times"></i>
+                    </button>
+                `;
+
+                        // Add event listener to "Remove" button for each watched movie
+                        const removeButton = article.querySelector('.remove-watched-movie');
+                        removeButton.addEventListener('click', () => {
+                            removeMovieFromWatched(movie.imdbID);
+                        });
+
+                        // Add event listener to star rating for updating the rating
+                        const starRating = article.querySelector('.star-rating');
+                        starRating.addEventListener('click', () => {
+                            movieToRate = movie;
+                            rateMovieTitle.textContent = movie.Title;
+                            rateMovieModal.classList.remove('hidden');
+                            createInteractiveStars(movie.rating);
+                        });
+
+                        watchedContainer.appendChild(article);
+                    });
+                }
+
+                updateMoviesTogetherCount();
+                updateAverageRating();
+            }
+
+            // Function to generate star rating HTML with half-star support
+            function generateStarRating(rating) {
+                let starsHTML = '';
+                for (let i = 1; i <= 5; i++) {
+                    if (i <= rating) {
+                        starsHTML += '<i class="fas fa-star text-[#ff6f61]"></i>'; // Full star
+                    } else if (i - 0.5 === rating) {
+                        starsHTML += '<i class="fas fa-star-half-alt text-[#ff6f61]"></i>'; // Half star
+                    } else {
+                        starsHTML += '<i class="far fa-star text-[#ff6f61]"></i>'; // Empty star
+                    }
+                }
+                return starsHTML;
+            }
+
+            // Function to update the recent movies UI
+            function updateRecentMoviesUI() {
+                const watched = JSON.parse(localStorage.getItem('watched')) || [];
+                const recentMovies = watched.slice(-2); // Get the last 2 watched movies
+                recentMoviesList.innerHTML = '';
+
+                recentMovies.forEach(movie => {
+                    const article = document.createElement('article');
+                    article.classList.add('bg-white', 'rounded-lg', 'overflow-hidden', 'shadow-sm', 'transform', 'transition-transform', 'hover:scale-105', 'dark:bg-gray-800');
+                    article.innerHTML = `
+                <div class="aspect-[2/3] relative">
+                    <img src="${movie.Poster}" class="w-full h-full object-cover" alt="Movie poster for ${movie.Title}" loading="lazy" />
+                    <div class="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/60 to-transparent p-2">
+                        <div class="flex justify-between items-center">
+                            <div class="text-white text-sm">
+                                <span class="star-rating">
+                                    ${generateStarRating(movie.rating)}
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="p-2">
+                    <div class="text-sm font-medium mb-1 text-gray-800 dark:text-gray-200">${movie.Title}</div>
+                    <div class="text-xs text-gray-500 dark:text-gray-400">Watched ${new Date(movie.watchedDate).toLocaleDateString()}</div>
+                </div>
+            `;
+                    recentMoviesList.appendChild(article);
+                });
+            }
+
+            // Confirm Rate Button Event Listener
+            confirmRateButton.addEventListener('click', () => {
+                if (movieToRate) {
+                    addMovieToWatched(movieToRate, movieToRate.rating);
+                    removeMovieFromWatchlist(movieToRate.imdbID); // Remove from watchlist
+                    rateMovieModal.classList.add('hidden');
+                    movieToRate = null; // Reset rated movie
+                }
+            });
+
+            // Close Rate Modal Button Event Listener
+            closeRateModalButton.addEventListener('click', () => {
+                rateMovieModal.classList.add('hidden');
+            });
+
+            // Theme Toggle
+            const themeToggleButton = document.getElementById('theme-toggle-button');
+            const body = document.body;
+
+            // Check for theme preference in local storage
+            const currentTheme = localStorage.getItem('theme') || 'light'; // Default to light
+
+            // Apply initial theme
+            applyTheme(currentTheme);
+
+            themeToggleButton.addEventListener('click', () => {
+                const newTheme = body.dataset.theme === 'light' ? 'dark' : 'light';
+                applyTheme(newTheme);
+                localStorage.setItem('theme', newTheme); // Save preference
+            });
+
+            function applyTheme(theme) {
+                body.dataset.theme = theme;
+                if (theme === 'dark') {
+                    body.classList.remove('bg-gray-50');
+                    body.classList.add('bg-gray-900');
+                    themeToggleButton.innerHTML = '<i class="fas fa-sun text-gray-400"></i>';
+                } else {
+                    body.classList.remove('bg-gray-900');
+                    body.classList.add('bg-gray-50');
+                    themeToggleButton.innerHTML = '<i class="fas fa-moon text-gray-600"></i>';
+                }
+                updateWatchedUI();
+                updateWatchlistUI();
+            }
+
+            // Tab Switching and Navigation
+            function showPanel(panel) {
+                // Hide all panels
+                homePanel.classList.add('hidden');
+                recentPanel.classList.add('hidden');
+                watchlistPanel.classList.add('hidden');
+                watchedPanel.classList.add('hidden');
+
+                // Reset transition classes
+                homePanel.classList.remove('page-enter-active', 'page-enter');
+                recentPanel.classList.remove('page-enter-active', 'page-enter');
+                watchlistPanel.classList.remove('page-enter-active', 'page-enter');
+                watchedPanel.classList.remove('page-enter-active', 'page-enter');
+
+                // Show the selected panel and apply transition
+                panel.classList.remove('hidden');
+                setTimeout(() => {
+                    panel.classList.add('page-enter-active', 'page-enter');
+                }, 0); // Using 0 for the timeout is a common trick to force a reflow
+            }
+
+            // Function to set the active state on navigation elements
+            function setActiveNavigation(activeNav, activeTab) {
+                // Reset all nav buttons and tabs
+                const navButtons = [homeNav, recentNav, addMovieNav, watchedNav];
+                const tabs = [homeTab, recentTab, watchlistTab, watchedTab];
+
+                navButtons.forEach(button => {
+                    button.classList.remove('text-[#ff6f61]', 'bg-[#ff6f61]/10', 'dark:bg-[#ff6f61]/20');
+                    button.classList.add('hover:text-[#ff6f61]', 'hover:bg-[#ff6f61]/10', 'dark:hover:bg-[#ff6f61]/20');
+                    button.querySelector('i').classList.remove('text-[#ff6f61]');
+                    button.querySelector('i').classList.add('text-gray-400', 'dark:text-gray-500');
+                });
+
+                tabs.forEach(tab => {
+                    tab.classList.remove('active-tab', 'text-[#ff6f61]', 'bg-[#ff6f61]/10', 'dark:text-[#ff6f61]', 'dark:bg-[#ff6f61]/20');
+                    tab.classList.add('text-gray-600', 'dark:text-gray-400');
+                });
+
+                // Set active state for the clicked nav button and tab
+                if (activeNav) {
+                    activeNav.classList.add('text-[#ff6f61]', 'bg-[#ff6f61]/10', 'dark:bg-[#ff6f61]/20');
+                    activeNav.classList.remove('hover:text-[#ff6f61]', 'hover:bg-[#ff6f61]/10', 'dark:hover:bg-[#ff6f61]/20');
+                    activeNav.querySelector('i').classList.add('text-[#ff6f61]');
+                    activeNav.querySelector('i').classList.remove('text-gray-400', 'dark:text-gray-500');
+                }
+
+                if (activeTab) {
+                    activeTab.classList.add('active-tab', 'text-[#ff6f61]', 'bg-[#ff6f61]/10', 'dark:text-[#ff6f61]', 'dark:bg-[#ff6f61]/20');
+                    activeTab.classList.remove('text-gray-600', 'dark:text-gray-400');
+                }
+            }
+
+            homeNav.addEventListener('click', () => {
+                showPanel(homePanel);
+                setActiveNavigation(homeNav, homeTab);
+                updateWatchlistUI(); // Refresh watchlist on Home
+                displayRecommendations(); // Show recommendations
+            });
+
+            recentNav.addEventListener('click', () => {
+                showPanel(recentPanel);
+                setActiveNavigation(recentNav, recentTab);
+                updateRecentMoviesUI();
+            });
+
+            addMovieNav.addEventListener('click', () => {
+                // Open the Add Movie modal
+                setActiveNavigation(addMovieNav);
+                addMovieModal.classList.remove('hidden');
+                movieSearchInput.value = '';
+                searchResultsList.innerHTML = '';
+                movieDetails.classList.add('hidden');
+                selectedMovie = null;
+            });
+
+            watchedNav.addEventListener('click', () => {
+                showPanel(watchedPanel);
+                setActiveNavigation(watchedNav, watchedTab);
+                updateWatchedUI(); // Refresh watched list on Watched tab
+            });
+
+            homeTab.addEventListener('click', () => {
+                showPanel(homePanel);
+                setActiveNavigation(homeNav, homeTab);
+                updateWatchlistUI(); // Refresh watchlist on Home
+                displayRecommendations(); // Show recommendations
+            });
+
+            recentTab.addEventListener('click', () => {
+                showPanel(recentPanel);
+                setActiveNavigation(recentNav, recentTab);
+                updateRecentMoviesUI();
+            });
+
+            watchlistTab.addEventListener('click', () => {
+                showPanel(watchlistPanel);
+                setActiveNavigation(watchlistNav, watchlistTab);
+                updateWatchlistUI(); // Refresh watchlist on Watchlist tab
+            });
+
+            watchedTab.addEventListener('click', () => {
+                showPanel(watchedPanel);
+                setActiveNavigation(watchedNav, watchedTab);
+                updateWatchedUI(); // Refresh watched list on Watched tab
+            });
+
+            // Sorting function for watchlist
+            function sortWatchlist(criteria) {
+                let watchlist = JSON.parse(localStorage.getItem('watchlist')) || [];
+
+                if (criteria === 'date') {
+                    watchlist.sort((a, b) => new Date(a.addedDate) - new Date(b.addedDate));
+                } else if (criteria === 'priority') {
+                    const priorityOrder = { high: 1, medium: 2, low: 3 };
+                    watchlist.sort((a, b) => priorityOrder[a.priority] - priorityOrder[b.priority]);
+                }
+
+                localStorage.setItem('watchlist', JSON.stringify(watchlist));
+                updateWatchlistUI();
+            }
+
+            // Function to update the "Movies Together" count
+            function updateMoviesTogetherCount() {
+                const watchedMovies = JSON.parse(localStorage.getItem('watched')) || [];
+                moviesTogetherCount.textContent = watchedMovies.length;
+            }
+
+            // Function to update the "Average Rating"
+            function updateAverageRating() {
+                const watchedMovies = JSON.parse(localStorage.getItem('watched')) || [];
+                if (watchedMovies.length === 0) {
+                    averageRating.textContent = 'N/A';
+                } else {
+                    const totalRating = watchedMovies.reduce((sum, movie) => sum + movie.rating, 0);
+                    const avg = (totalRating / watchedMovies.length).toFixed(1);
+                    averageRating.textContent = avg;
+                }
+            }
+
+            // Function to remove a movie from the "Watched" list
+            function removeMovieFromWatched(imdbID) {
+                let watched = JSON.parse(localStorage.getItem('watched')) || [];
+                watched = watched.filter(movie => movie.imdbID !== imdbID);
+                localStorage.setItem('watched', JSON.stringify(watched));
+                updateWatchedUI();
+                updateRecentMoviesUI();
+            }
+
+            // Clear Watched Button
+            const clearWatchedButton = document.getElementById('clear-watched-button');
+            clearWatchedButton.addEventListener('click', () => {
+                localStorage.removeItem('watched'); // Remove the entire watched list
+                updateWatchedUI();
+                updateRecentMoviesUI();
+            });
+
+            // Function to export data as CSV
+            function exportToCSV(data, filename) {
+                const csvContent = "data:text/csv;charset=utf-8," + data.map(row => Object.values(row).join(",")).join("\n");
+                const encodedUri = encodeURI(csvContent);
+                const link = document.createElement("a");
+                link.setAttribute("href", encodedUri);
+                link.setAttribute("download", filename);
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+            }
+
+            // Function to export data as PDF
+            function exportToPDF(data, filename) {
+                const { jsPDF } = window.jspdf;
+                const doc = new jsPDF();
+
+                doc.text(filename, 10, 10);
+                data.forEach((item, index) => {
+                    doc.text(`${index + 1}. ${item.Title} (${item.Year})`, 10, 20 + (index * 10));
+                });
+
+                doc.save(filename);
+            }
+
+            // Event listeners for export buttons
+            document.getElementById('export-watchlist-csv').addEventListener('click', () => {
+                const watchlist = JSON.parse(localStorage.getItem('watchlist')) || [];
+                exportToCSV(watchlist, 'watchlist.csv');
+            });
+
+            document.getElementById('export-watchlist-pdf').addEventListener('click', () => {
+                const watchlist = JSON.parse(localStorage.getItem('watchlist')) || [];
+                exportToPDF(watchlist, 'watchlist.pdf');
+            });
+
+            document.getElementById('export-watched-csv').addEventListener('click', () => {
+                const watched = JSON.parse(localStorage.getItem('watched')) || [];
+                exportToCSV(watched, 'watched.csv');
+            });
+
+            document.getElementById('export-watched-pdf').addEventListener('click', () => {
+                const watched = JSON.parse(localStorage.getItem('watched')) || [];
+                exportToPDF(watched, 'watched.pdf');
+            });
+
+            // Function to get movie recommendations
+            async function getMovieRecommendations() {
+                const watched = JSON.parse(localStorage.getItem('watched')) || [];
+                const genres = {};
+
+                // Analyze watched movies to determine favorite genres
+                watched.forEach(movie => {
+                    if (movie.Genre) {
+                        movie.Genre.split(', ').forEach(genre => {
+                            genres[genre] = (genres[genre] || 0) + 1;
+                        });
+                    }
+                });
+
+                // Get the most frequent genre
+                const favoriteGenre = Object.keys(genres).reduce((a, b) => genres[a] > genres[b] ? a : b, '');
+
+                if (favoriteGenre) {
+                    const recommendations = await searchMovie(favoriteGenre, 1);
+                    return recommendations;
+                } else {
+                    return [];
+                }
+            }
+
+            // Function to display recommendations
+            async function displayRecommendations() {
+                const recommendations = await getMovieRecommendations();
+                const recommendationsContainer = document.getElementById('recommendations-list');
+                recommendationsContainer.innerHTML = '';
+
+                if (recommendations.length === 0) {
+                    recommendationsContainer.innerHTML = '<p class="text-gray-800 dark:text-gray-200">No recommendations found.</p>';
+                } else {
+                    recommendations.forEach(movie => {
+                        const article = document.createElement('article');
+                        article.classList.add('bg-white', 'rounded-lg', 'p-4', 'flex', 'items-center', 'shadow-sm', 'dark:bg-gray-800');
+                        article.innerHTML = `
+                            <img src="${movie.Poster}" class="w-16 h-24 object-cover rounded-md mr-4" alt="Movie poster for ${movie.Title}" loading="lazy"/>
+                            <div class="flex-1">
+                                <div class="font-medium mb-1 text-gray-800 dark:text-gray-200">${movie.Title}</div>
+                                <div class="text-sm text-gray-500 dark:text-gray-400">${movie.Year}</div>
+                            </div>
+                        `;
+                        recommendationsContainer.appendChild(article);
+                    });
+                }
+            }
+
+            // Call these functions initially to populate the lists on page load
+            updateWatchlistUI();
+            updateWatchedUI();
+            updateRecentMoviesUI();
+            updateNotificationBadge(); // Initialize notification badge
+            displayRecommendations(); // Show recommendations on page load
+
+            // Set the Home panel as the initial active panel
+            showPanel(homePanel);
+            setActiveNavigation(homeNav, homeTab); // Set initial active navigation
+        </script>
+    </div>
+</body>
+
+</html>

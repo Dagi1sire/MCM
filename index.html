@@ -65,7 +65,7 @@
     <div class="max-w-[412px] mx-auto min-h-screen relative">
         <header class="fixed top-0 w-full max-w-[412px] bg-white z-50 shadow-sm dark:bg-gray-800">
             <div class="flex items-center justify-between px-4 h-14">
-                <img src="Images/TMLogo.png" class="cc cc-logo" alt="Movie Diary Logo" height="40" width="40" />
+                <img src="images/TMLogo.png" class="cc cc-logo" alt="Movie Diary Logo" height="40" width="40" />
                 <div class="text-lg font-medium text-gray-800 dark:text-gray-200" role="heading" aria-level="1">
                 </div>
                 <div class="flex">
@@ -397,6 +397,7 @@
             const averageRating = document.getElementById('average-rating');
 
             const watchlistList = document.getElementById('watchlist-list');
+            const watchlistListTab = document.getElementById('watchlist-list-tab'); // For the watchlist tab
             const watchedList = document.getElementById('watched-list');
 
             let selectedMovie = null;
@@ -584,7 +585,7 @@
                 if (totalResults > 10) { // Only show pagination if there are more than 10 results
                     const prevButton = document.createElement('button');
                     prevButton.textContent = 'Previous';
-                    prevButton.classList.add('rounded-button', 'bg-[#ff6f61]', 'text-white', 'px-4', 'py-2', 'mr-2');
+                    prevButton.classList.add('rounded-button', 'bg-[#ff6f61]', 'text-white', 'px-4',                    'py-2', 'mr-2');
                     prevButton.disabled = currentPage === 1;
                     prevButton.addEventListener('click', async () => {
                         currentPage--;
@@ -636,24 +637,25 @@
 
             // Function to add a movie to the watchlist (Firestore)
             async function addMovieToWatchlist(movie, priority) {
-    const movieData = {
-        ...movie,
-        priority,
-        addedDate: new Date().toISOString(),
-        addedBy: "Dagi" // Replace with the current user's identifier
-    };
+                const movieData = {
+                    ...movie,
+                    priority,
+                    addedDate: new Date().toISOString(),
+                    addedBy: "Dagi" // Replace with the current user's identifier
+                };
 
-    console.log("Adding movie to Firestore:", movieData); // Debugging
+                console.log("Adding movie to Firestore:", movieData); // Debugging
 
-    try {
-        const docRef = await addDoc(collection(db, "watchlist"), movieData);
-        console.log("Movie added with ID:", docRef.id); // Debugging
-        notifyMovieAdded(movie.Title); // Notify user
-        updateWatchlistUI(); // Refresh the watchlist UI
-    } catch (error) {
-        console.error("Error adding movie to watchlist: ", error);
-    }
-}
+                try {
+                    const docRef = await addDoc(collection(db, "watchlist"), movieData);
+                    console.log("Movie added with ID:", docRef.id); // Debugging
+                    notifyMovieAdded(movie.Title); // Notify user
+                    updateWatchlistUI(); // Refresh the watchlist UI on the home page
+                    updateWatchlistUITab(); // Refresh the watchlist UI on the watchlist tab
+                } catch (error) {
+                    console.error("Error adding movie to watchlist: ", error);
+                }
+            }
 
             // Function to remove a movie from the watchlist (Firestore)
             async function removeMovieFromWatchlist(imdbID) {
@@ -664,7 +666,7 @@
                 });
             }
 
-            // Function to update the watchlist UI (Firestore)
+            // Function to update the watchlist UI (Firestore) - Home Page
             function updateWatchlistUI() {
                 const q = query(collection(db, "watchlist"));
                 onSnapshot(q, (querySnapshot) => {
@@ -705,6 +707,52 @@
                             });
 
                             watchlistList.appendChild(article);
+                        });
+                    }
+                });
+            }
+
+            // Function to update the watchlist UI (Firestore) - Watchlist Tab
+            function updateWatchlistUITab() {
+                const q = query(collection(db, "watchlist"));
+                onSnapshot(q, (querySnapshot) => {
+                    watchlistListTab.innerHTML = ''; // Use watchlistListTab here
+
+                    if (querySnapshot.empty) {
+                        watchlistListTab.innerHTML = '<p class="text-gray-800 dark:text-gray-200">Your watchlist is empty.</p>';
+                    } else {
+                        querySnapshot.forEach((doc) => {
+                            const movie = doc.data();
+                            const article = document.createElement('article');
+                            article.classList.add('bg-white', 'rounded-lg', 'p-4', 'flex', 'items-center', 'shadow-sm', 'dark:bg-gray-800');
+                            article.innerHTML = `
+                                <img src="${movie.Poster}" class="w-16 h-24 object-cover rounded-md mr-4" alt="Movie poster for ${movie.Title}" loading="lazy"/>
+                                <div class="flex-1">
+                                    <div class="font-medium mb-1 text-gray-800 dark:text-gray-200">${movie.Title}</div>
+                                    <div class="text-sm text-gray-500 dark:text-gray-400 mb-2">Added on: ${new Date(movie.addedDate).toLocaleDateString()}</div>
+                                    <div class="text-sm text-gray-500 dark:text-gray-400 mb-2">Priority: ${movie.priority}</div>
+                                    <div class="text-sm text-gray-500 dark:text-gray-400 mb-2">Added by: ${movie.addedBy}</div>
+                                    <button class="!rounded-button bg-[#ff6f61] text-white text-sm px-4 py-1.5 transition-transform hover:scale-105 active:scale-95" aria-label="Watch ${movie.Title} together">Watch</button>
+                                    <button class="remove-movie !rounded-button bg-gray-400 text-white text-sm px-4 py-1.5 transition-transform hover:scale-105 active:scale-95 dark:bg-gray-600" aria-label="Remove ${movie.Title}" data-imdbid="${movie.imdbID}">Remove</button>
+                                </div>
+                            `;
+
+                            // Add event listener to "Watch" button
+                            const watchButton = article.querySelector('[aria-label^="Watch"]');
+                            watchButton.addEventListener('click', () => {
+                                movieToRate = movie;
+                                rateMovieTitle.textContent = movie.Title;
+                                rateMovieModal.classList.remove('hidden');
+                                createInteractiveStars(movieToRate.rating || 0);
+                            });
+
+                            // Add event listener to "Remove" button
+                            const removeButton = article.querySelector('.remove-movie');
+                            removeButton.addEventListener('click', () => {
+                                removeMovieFromWatchlist(movie.imdbID);
+                            });
+
+                            watchlistListTab.appendChild(article); // Append to watchlistListTab
                         });
                     }
                 });
@@ -1038,7 +1086,7 @@
             watchlistTab.addEventListener('click', () => {
                 showPanel(watchlistPanel);
                 setActiveNavigation(watchlistNav, watchlistTab);
-                updateWatchlistUI(); // Refresh watchlist on Watchlist tab
+                updateWatchlistUITab(); // Refresh watchlist on Watchlist tab
             });
 
             watchedTab.addEventListener('click', () => {
@@ -1194,6 +1242,7 @@
 
             // Call these functions initially to populate the lists on page load
             updateWatchlistUI();
+            updateWatchlistUITab(); // Update watchlist on both pages
             updateWatchedUI();
             updateRecentMoviesUI();
             updateNotificationBadge(); // Initialize notification badge
